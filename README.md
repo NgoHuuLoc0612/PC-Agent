@@ -464,4 +464,4 @@ SQLite at `DB_PATH`. Tables managed by `services/database.py`:
 
 ## 📜 License
 
-MIT — use freely for personal or enterprise environments.
+MIT — use freely for personal environments.

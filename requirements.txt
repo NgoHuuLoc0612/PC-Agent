@@ -1,0 +1,56 @@
+# ══════════════════════════════════════════════════════════
+#  PC Agent — Python Dependencies
+#  Install: pip install -r requirements.txt
+# ══════════════════════════════════════════════════════════
+
+# ── Core ────────────────────────────────────────────────
+discord.py
+python-dotenv
+
+# ── System monitoring ───────────────────────────────────
+psutil
+
+# ── HTTP / API ──────────────────────────────────────────
+httpx
+
+# ── Database ────────────────────────────────────────────
+# (uses built-in sqlite3)
+
+# ── Visualizations ─────────────────────────────────────
+matplotlib
+numpy
+
+# ── Screenshots ─────────────────────────────────────────
+mss
+Pillow
+
+# ── Keyboard / Mouse automation ─────────────────────────
+pyautogui
+
+# ── Clipboard ───────────────────────────────────────────
+pyperclip
+
+# ── Text-to-Speech ──────────────────────────────────────
+pyttsx3
+
+# ── Voice recognition ───────────────────────────────────
+SpeechRecognition
+# pyaudio                 # Uncomment; may need system package first:
+#                         # Ubuntu: apt install portaudio19-dev python3-pyaudio
+#                         # macOS:  brew install portaudio
+#                         # Windows: pip install pipwin && pipwin install pyaudio
+
+# ── Audio recording ─────────────────────────────────────
+sounddevice
+soundfile
+
+# ── Windows-specific (comment out on Linux/macOS) ───────
+pycaw                  # Windows audio control
+wmi                    # Windows Management Instrumentation
+comtypes               # COM interface (pycaw dependency)
+
+# ── GPU monitoring (optional) ───────────────────────────
+GPUtil                 # NVIDIA GPU stats
+
+# ── Network speed test (optional) ───────────────────────
+speedtest-cli

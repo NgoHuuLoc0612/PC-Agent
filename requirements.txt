@@ -54,3 +54,12 @@ GPUtil                 # NVIDIA GPU stats
 
 # ── Network speed test (optional) ───────────────────────
 speedtest-cli
+
+nvidia-ml-py3          # Deep NVIDIA GPU telemetry via NVML (gpu_detailed cog)
+
+# ── Native C++ binaries (compile separately or use !build commands) ────────
+# native/perf_counters.exe  — cl /EHsc /O2 perf_counters.cpp /link pdh.lib
+# native/fps_counter.exe    — cl /EHsc /O2 fps_counter.cpp /link dxgi.lib user32.lib
+# native/fps_hook.dll       — cl /EHsc /O2 /LD fps_hook.cpp /link dxgi.lib d3d11.lib
+# native/gpu_pipeline.exe   — cl /EHsc /O2 gpu_pipeline.cpp /link pdh.lib dxgi.lib
+# MinGW alternative: g++ -std=c++17 -O2 <src.cpp> -l<lib> -o <out>

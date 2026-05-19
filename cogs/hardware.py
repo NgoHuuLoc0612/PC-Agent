@@ -107,7 +107,7 @@ $cpu | ForEach-Object {
 
     # ── GPU ─────────────────────────────────────────────────
 
-    @commands.command(name="gpuinfo", aliases=["gpudetail", "gpustatus"])
+    @commands.command(name="gpuinfo", aliases=["gpustatus"])
     async def gpu_info(self, ctx):
         """Show GPU info — name, VRAM, driver, temperature."""
         async with ctx.typing():

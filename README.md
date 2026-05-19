@@ -2,7 +2,7 @@
 
 A Discord bot for **full remote PC control** via Discord commands. Built with discord.py and backed by SQLite. Targets Windows but most cogs work on Linux/macOS.
 
-**Version:** 2.0.0 · **Python:** 3.10+ · **Commands:** 197 · **Source:** 7,073 lines Python
+**Version:** 2.1.0 · **Python:** 3.10+ · **Commands:** 230 · **Source:** 9,377 lines Python
 
 ---
 
@@ -24,17 +24,22 @@ PC-Agent/
 │   ├── files.py               # 352 ln │ 13 cmd │ File system CRUD: ls, read, upload, zip
 │   ├── automation.py          # 249 ln │ 13 cmd │ Shell exec, keyboard/mouse, env vars
 │   ├── network.py             # 286 ln │ 11 cmd │ IP, ping, traceroute, DNS, port scan
+│   ├── perf_counters.py       # 487 ln │  8 cmd │ Raw Windows PDH counters via native C++ binary
+│   ├── fps_counter.py         # 467 ln │  7 cmd │ DXGI FPS counter via injected hook DLL
+│   ├── gpu_detailed.py        # 542 ln │  6 cmd │ Deep NVIDIA GPU monitoring via pynvml
+│   ├── gpu_pipeline.py        # 408 ln │  6 cmd │ GPU frame pipeline engine usage via PDH
+│   ├── bandwidth.py           # 394 ln │  6 cmd │ Internet speed tests via speedtest-cli
 │   ├── processes.py           # 253 ln │ 10 cmd │ Process list, kill, suspend, priority
 │   ├── audio.py               # 240 ln │ 10 cmd │ Volume, mute, TTS, media control
 │   ├── macro.py               # 358 ln │  9 cmd │ Record, save, replay command sequences
 │   ├── system.py              # 295 ln │  9 cmd │ CPU, RAM, disk, temp, GPU, dashboard
 │   ├── security.py            # 258 ln │  9 cmd │ Firewall, startup, antivirus, audit log
 │   ├── visualizations.py      # 355 ln │  8 cmd │ Charts, heatmap, waterfall, sparklines
-│   ├── power.py               # 210 ln │  8 cmd │ Shutdown, restart, sleep, hibernate
 │   ├── monitoring.py          # 276 ln │  8 cmd │ Background polling, alerts, export
+│   ├── power.py               # 210 ln │  8 cmd │ Shutdown, restart, sleep, hibernate
 │   ├── display.py             # 225 ln │  8 cmd │ Screenshot, resolution, brightness
-│   ├── remote.py              # 243 ln │  7 cmd │ Live stream, WoL, health check
 │   ├── permissions.py         # 368 ln │  7 cmd │ RBAC: viewer / operator / admin (SQLite)
+│   ├── remote.py              # 243 ln │  7 cmd │ Live stream, WoL, health check
 │   ├── scheduler.py           # 252 ln │  6 cmd │ At/cron tasks, reminders
 │   ├── clipboard.py           # 137 ln │  6 cmd │ Clipboard manager with history
 │   ├── registry.py            # 240 ln │  4 cmd │ Windows Registry CRUD
@@ -43,6 +48,13 @@ PC-Agent/
 ├── services/
 │   ├── database.py            # 198 ln │ SQLite wrapper — audit log, tasks, permissions, macros
 │   └── viz_service.py         # 266 ln │ Matplotlib dark-theme chart generation
+│
+├── native/                    # C++ native binaries (Windows-only)
+│   ├── perf_counters.cpp/.exe # PDH performance counter reader
+│   ├── fps_counter.cpp/.exe   # DXGI FPS reader (shared memory)
+│   ├── fps_hook.cpp/.dll      # Game process injection hook
+│   ├── gpu_pipeline.cpp/.exe  # GPU engine usage via PDH
+│   └── build_native.bat       # Build script for all native binaries
 │
 └── utils/
     ├── config.py              #  70 ln │ Centralized env-var config with defaults
@@ -79,6 +91,7 @@ PC-Agent/
 | `!topmem` | Top memory-consuming processes |
 | `!procinfo <pid>` | Detailed process info |
 | `!setpriority <pid> <level>` | Change process priority |
+| `!killname <name>` | Kill process by name |
 
 ### 📁 Files — `cogs/files.py`
 | Command | Description |
@@ -95,6 +108,7 @@ PC-Agent/
 | `!unzip <src> [dst]` | Extract a zip archive |
 | `!fileinfo <path>` | File metadata |
 | `!du <path>` | Disk usage of a directory |
+| `!mkdir <path>` | Create a directory |
 
 ### 🌐 Network — `cogs/network.py`
 | Command | Description |
@@ -109,6 +123,7 @@ PC-Agent/
 | `!mac` | MAC address |
 | `!scanports <host>` | TCP port scanner |
 | `!speedtest` | Internet speed test |
+| `!whois <host>` | WHOIS lookup |
 
 ### 📡 Network Plus — `cogs/network_plus.py`
 | Command | Description |
@@ -141,6 +156,7 @@ PC-Agent/
 | `!wallpaper <url>` | Set desktop wallpaper |
 | `!lockscreen` | Lock the workstation |
 | `!annotate <text>` | Screenshot with annotation overlay |
+| `!multiscreen` | Capture all monitors |
 
 ### 🔊 Audio — `cogs/audio.py`
 | Command | Description |
@@ -267,6 +283,7 @@ PC-Agent/
 | `!startsampling [interval]` | Start background metric sampling |
 | `!stopsampling` | Stop sampling |
 | `!metricsnapshot` | Snapshot of current sampled data |
+| `!vizexport` | Export chart as image |
 
 ### ⏰ Scheduler — `cogs/scheduler.py`
 | Command | Description |
@@ -298,6 +315,74 @@ PC-Agent/
 | `!wol <mac>` | Wake-on-LAN packet |
 | `!syshealth` | System health summary |
 | `!remoteinfo` | Remote session info |
+
+### 🎮 GPU Detailed — `cogs/gpu_detailed.py`
+
+> Requires `pip install nvidia-ml-py3` and `nvml.dll` accessible (copy to `C:\Program Files\NVIDIA Corporation\NVSMI\`).
+
+| Command | Aliases | Description |
+|---|---|---|
+| `!gpudetail [idx]` | `!gpud`, `!nvml` | Full NVIDIA GPU telemetry: clocks, memory, power, thermals, PCIe, ECC |
+| `!gpuprocs [idx]` | `!gpuprocesses`, `!gpupids` | Show processes consuming VRAM |
+| `!gpulive [idx] [dur] [interval]` | `!gpuwatch2`, `!gpupoll` | Live-updating GPU embed |
+| `!gpucount` | `!gpulist`, `!gpus` | List all detected NVIDIA GPUs |
+| `!gpueccstatus [idx]` | `!gpuecc` | ECC error counts |
+| `!gpuhistchart [idx]` | `!gpuhist`, `!gpuchart` | Plot GPU utilisation history (collected via `!gpulive`) |
+
+### 🖥️ GPU Pipeline — `cogs/gpu_pipeline.py`
+
+> Requires compiling `native/gpu_pipeline.exe` (Windows 10 1709+ with up-to-date GPU drivers).
+
+| Command | Aliases | Description |
+|---|---|---|
+| `!gpupipeline` | `!gpuengines` | Full GPU pipeline usage (all engines: 3D, Copy, Video Encode/Decode…) |
+| `!gpupipelinelive` | `!gpuenginelive` | Live-updating pipeline dashboard |
+| `!gpupipelinepid <pid>` | `!gpuenginepid` | Pipeline usage for a specific process |
+| `!gpupipelinechart` | `!gpuenginechart` | Bar chart of current engine usage |
+| `!gpupipelineadapters` | `!gpuenginelist` | List DXGI adapters with LUID |
+| `!gpupipelinebuild` | `!buildgpupipeline` | Compile `gpu_pipeline.exe` |
+
+### 🌐 Bandwidth — `cogs/bandwidth.py`
+
+> Requires `pip install speedtest-cli`.
+
+| Command | Aliases | Description |
+|---|---|---|
+| `!speedtest2` | `!bwtest` | Full Speedtest.net test (download, upload, ping, jitter, ISP) |
+| `!pingtest <host>` | `!jitter` | Latency and jitter test |
+| `!speedservers` | `!listservers` | List nearby Speedtest servers |
+| `!speedhistory` | `!bwhistory`, `!sthist` | History of past speed tests |
+| `!speedchart` | `!bwchart` | Chart of speed test history |
+| `!speedtestid <id>` | `!bwtestid` | Run test against a specific server ID |
+
+### 📊 Performance Counters — `cogs/perf_counters.py`
+
+> Requires compiling `native/perf_counters.exe` via MSVC or MinGW (`g++ -std=c++17 -O2 -o perf_counters.exe perf_counters.cpp -lpdh`).
+
+| Command | Aliases | Description |
+|---|---|---|
+| `!perf` | `!pdh`, `!winperf` | Snapshot of all tracked PDH counters |
+| `!perflive` | `!pdhlive` | Live-updating counter dashboard |
+| `!perfcounter <path>` | `!pdhcounter`, `!rawcounter` | Query a single raw PDH counter |
+| `!perflist` | `!pdhlist`, `!counterlist` | List available PDH counter categories |
+| `!perfexport` | `!pdhexport` | Export counter snapshot to JSON |
+| `!perfalert <counter> <threshold>` | `!pdhalert` | Set a threshold alert on any counter |
+| `!perfalertclear` | `!pdhclearalert` | Clear all counter alerts |
+| `!perfbuild` | `!buildperf` | Auto-compile `perf_counters.exe` |
+
+### 🎮 FPS Counter — `cogs/fps_counter.py`
+
+> Requires compiling `native/fps_counter.exe` and `fps_hook.dll`. The DLL is injected into the game process; the EXE reads FPS from shared memory.
+
+| Command | Aliases | Description |
+|---|---|---|
+| `!fpsinject <pid>` | `!injectfps` | Inject `fps_hook.dll` into a game process |
+| `!fps <pid>` | `!getfps`, `!fpscheck` | Show current FPS from shared memory |
+| `!fpslive <pid>` | `!fpsmoni`, `!watchfps` | Live FPS embed (30 s auto-update) |
+| `!frametimes <pid>` | `!frametime`, `!fpspercentiles` | Frame-time percentile stats (1%, 0.1% lows) |
+| `!fpsgpulist` | `!dxgiadapters`, `!listadapters` | List DXGI adapters and displays |
+| `!fpsprocs` | `!dxprocs`, `!gamelist` | List running DirectX/game processes for PID lookup |
+| `!fpsbuild` | `!buildfps`, `!compilefps` | Compile `fps_counter.exe` + `fps_hook.dll` |
 
 ### 🔐 Permissions — `cogs/permissions.py`
 
@@ -426,15 +511,60 @@ pywin32        # Win32 API (hardware cog)
 
 ### Optional
 
-| Feature | Package |
+| Feature | Package / Requirement |
 |---|---|
-| NVIDIA GPU monitoring | `GPUtil` |
-| Internet speed test | `speedtest-cli` |
+| NVIDIA GPU deep monitoring | `pip install nvidia-ml-py3` + copy `nvml.dll` to `C:\Program Files\NVIDIA Corporation\NVSMI\` |
+| Internet speed test (basic) | `speedtest-cli` |
+| Internet speed test (bandwidth cog) | `speedtest-cli` (separate cog with history & charts) |
 | Voice input (microphone) | `pyaudio` |
 | CPU temps via OHM | OpenHardwareMonitor running as service |
+| FPS counter | Compile `native/fps_counter.exe` + `fps_hook.dll` (MSVC or MinGW) |
+| GPU pipeline usage | Compile `native/gpu_pipeline.exe` (MSVC or MinGW + PDH lib) |
+| Windows PDH counters | Compile `native/perf_counters.exe` (MSVC or MinGW + PDH lib) |
 
-> **pyaudio on Windows:** `pip install pipwin && pipwin install pyaudio`  
+> **pyaudio on Windows:** `pip install pipwin && pipwin install pyaudio`
 > **pyaudio on Ubuntu:** `apt install portaudio19-dev && pip install pyaudio`
+
+### Fix: NVML Shared Library Not Found (Windows)
+
+If pynvml reports `NVML Shared Library Not Found` even after installing `nvidia-ml-py3`:
+
+```cmd
+:: Run as Administrator
+mkdir "C:\Program Files\NVIDIA Corporation\NVSMI"
+copy "C:\Windows\System32\nvml.dll" "C:\Program Files\NVIDIA Corporation\NVSMI\nvml.dll"
+```
+
+Then verify:
+
+```cmd
+python -c "import pynvml; pynvml.nvmlInit(); print(pynvml.nvmlDeviceGetCount())"
+```
+
+### Building Native Binaries
+
+```cmd
+cd native
+build_native.bat
+```
+
+Or manually (MSVC):
+
+```cmd
+cl /EHsc /O2 perf_counters.cpp /link pdh.lib /out:perf_counters.exe
+cl /EHsc /O2 gpu_pipeline.cpp  /link pdh.lib /out:gpu_pipeline.exe
+cl /EHsc /O2 fps_counter.cpp              /out:fps_counter.exe
+cl /EHsc /O2 /LD fps_hook.cpp             /out:fps_hook.dll
+```
+
+Or MinGW:
+
+```bash
+g++ -std=c++17 -O2 -o perf_counters.exe perf_counters.cpp -lpdh
+g++ -std=c++17 -O2 -o gpu_pipeline.exe  gpu_pipeline.cpp  -lpdh
+g++ -std=c++17 -O2 -o fps_counter.exe   fps_counter.cpp
+g++ -std=c++17 -O2 -shared -o fps_hook.dll fps_hook.cpp
+```
 
 ---
 
@@ -452,13 +582,15 @@ SQLite at `DB_PATH`. Tables managed by `services/database.py`:
 
 ## 🏗️ Architecture Notes
 
-**Cog loading** happens in `main.py` → `PCAgent.setup_hook()`. All 21 cogs are listed in the `COGS` list. Failed cogs log an error and are skipped — the rest of the bot keeps running.
+**Cog loading** happens in `main.py` → `PCAgent.setup_hook()`. All 26 cogs are listed in the `COGS` list. Failed cogs log an error and are skipped — the rest of the bot keeps running.
 
 **`@admin_only()`** decorator in `utils/helpers.py` checks the invoker against `OWNER_IDS` env var first, then falls back to the SQLite permissions table. Owner IDs always have admin access regardless of the DB.
 
 **`services/database.py`** is a thin synchronous SQLite wrapper. Each cog that needs persistence calls `_init_*_db()` on first load to create its table if missing — no migrations needed.
 
 **`viz_service.py`** generates Matplotlib figures in a dark theme and returns them as `discord.File` objects ready for `ctx.send()`.
+
+**Native binaries** (`native/*.exe`, `native/*.dll`) are optional Windows-only components for low-level metrics not accessible from Python. Each has a corresponding `!*build` command that compiles it automatically if MSVC or MinGW is detected on PATH.
 
 ---
 

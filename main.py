@@ -44,6 +44,12 @@ COGS = [
     "cogs.remote_control",
     "cogs.macro",
     "cogs.network_plus",
+    # ── Advanced monitoring & GPU cogs ──
+    "cogs.gpu_detailed",      # Deep NVIDIA GPU via pynvml (nvidia-ml-py3)
+    "cogs.bandwidth",         # Internet speed tests via speedtest-cli
+    "cogs.perf_counters",     # Raw Windows PDH counters via native C++ binary
+    "cogs.fps_counter",       # DXGI FPS counter via injected hook DLL
+    "cogs.gpu_pipeline",      # GPU frame pipeline engine usage via PDH
 ]
 
 
